@@ -1,0 +1,195 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { 
+    color-scheme: dark; 
+  }
+  body {
+    background-color: #0A0A0F;
+    color: #e4e1e9;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Material Symbols */
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+}
+
+@layer components {
+  /* ─── Buttons ─────────────────────────────────────── */
+  .btn-primary {
+    @apply bg-[#8B5CF6] text-white px-4 py-2 rounded font-semibold hover:opacity-90 transition-opacity active:scale-95 flex items-center justify-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply bg-[#1B1B26] border border-[#24242F] text-[#e4e1e9] px-4 py-2 rounded font-semibold hover:border-[#3F3F4E] hover:bg-[#24242F] transition-all active:scale-95 flex items-center justify-center gap-2;
+  }
+
+  /* ─── Cards ───────────────────────────────────────── */
+  .card-level-1 {
+    @apply bg-[#14141C] border border-[#24242F] rounded-xl;
+  }
+
+  .card-level-2 {
+    @apply bg-[#1B1B26] border border-[#24242F] rounded-lg;
+  }
+
+  /* ─── Inputs ──────────────────────────────────────── */
+  .input-field {
+    background-color: #1f1f25;
+    border: 1px solid #494454;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: #e4e1e9;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .input-field::placeholder {
+    color: #52525B;
+  }
+  .input-field:focus {
+    border-color: #8B5CF6;
+    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.3);
+  }
+
+  /* ─── Nav Links ───────────────────────────────────── */
+  .nav-link {
+    @apply flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-[#39383e] rounded-lg transition-all duration-150 ease-in-out cursor-pointer;
+  }
+  .nav-link.active {
+    @apply bg-[#00cbe6] text-[#00515d];
+  }
+
+  /* ─── Sidebar ─────────────────────────────────────── */
+  .sidebar {
+    @apply bg-surface-container border-r border-outline-variant flex flex-col p-unit-4;
+    width: 256px;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 40;
+  }
+
+  /* ─── Status Badges ───────────────────────────────── */
+  .badge-completed {
+    @apply px-2 py-0.5 rounded text-[10px] font-bold tracking-wider;
+    background: rgba(16, 185, 129, 0.1);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+  }
+  .badge-analyzing {
+    @apply px-2 py-0.5 rounded text-[10px] font-bold tracking-wider flex items-center gap-1;
+    background: rgba(245, 158, 11, 0.1);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    animation: pulse-badge 2s ease-in-out infinite;
+  }
+  .badge-failed {
+    @apply px-2 py-0.5 rounded text-[10px] font-bold tracking-wider;
+    background: rgba(244, 63, 94, 0.1);
+    color: #fb7185;
+    border: 1px solid rgba(244, 63, 94, 0.2);
+  }
+}
+
+@layer utilities {
+  /* ─── Glow Effects ────────────────────────────────── */
+  .glow-violet {
+    box-shadow: 0 0 20px 2px rgba(139, 92, 246, 0.3);
+  }
+  .glow-violet-sm {
+    box-shadow: 0 0 10px 1px rgba(139, 92, 246, 0.2);
+  }
+  .glow-cyan {
+    box-shadow: 0 0 16px 2px rgba(34, 211, 238, 0.3);
+  }
+  .glow-amber {
+    box-shadow: 0 0 20px 4px rgba(245, 158, 11, 0.4);
+  }
+  .glow-rose {
+    box-shadow: 0 0 24px 6px rgba(244, 63, 94, 0.5);
+  }
+
+  /* ─── Gradient text ───────────────────────────────── */
+  .text-gradient-violet {
+    background: linear-gradient(135deg, #d0bcff, #8B5CF6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .text-gradient-cyan-violet {
+    background: linear-gradient(135deg, #5de6ff, #8B5CF6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── Grid Background ─────────────────────────────── */
+  .grid-bg {
+    background-size: 40px 40px;
+    background-image:
+      linear-gradient(to right, rgba(73, 68, 84, 0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(73, 68, 84, 0.1) 1px, transparent 1px);
+  }
+
+  /* ─── Scrollbar ───────────────────────────────────── */
+  .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: #35343a; border-radius: 3px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #494454; }
+}
+
+/* ─── Global Scrollbar ──────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #35343a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #494454; }
+
+/* ─── Animations ────────────────────────────────────── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+@keyframes ping-dot {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+@keyframes dash-anim {
+  to { stroke-dashoffset: -1000; }
+}
+
+.animate-fade-in-up { animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-fade-in-up.delay-1 { animation-delay: 0.1s; opacity: 0; }
+.animate-fade-in-up.delay-2 { animation-delay: 0.2s; opacity: 0; }
+.animate-fade-in-up.delay-3 { animation-delay: 0.3s; opacity: 0; }
+.animate-shimmer { animation: shimmer 2s infinite; }

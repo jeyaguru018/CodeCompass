@@ -1,0 +1,65 @@
+name: CodeCompass Backend CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: codecompass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and run all tests (Unit + Integration)
+        env:
+          DATABASE_URL: jdbc:postgresql://localhost:5432/codecompass
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          # These are dummy secrets for the test context
+          JWT_PRIVATE_KEY: dummy-private-key
+          JWT_PUBLIC_KEY: dummy-public-key
+          ENCRYPTION_KEY: dummy-encryption-key-1234567890
+          GITHUB_CLIENT_ID: dummy-client-id
+          GITHUB_CLIENT_SECRET: dummy-client-secret
+        run: mvn clean verify -B --fail-at-end

@@ -1,0 +1,139 @@
+CodeCompass — Your Codebase, Finally Understood
+Turn any GitHub repo into a guided, intelligent onboarding experience
+Problem
+When a developer joins a new team, understanding the codebase takes weeks — sometimes months. There's no tool that reads an actual repository and explains it in human language. Developers either get a verbal walkthrough from a senior (who's now blocked), skim through hundreds of files blindly, or read outdated wikis that don't match the current code. The cost of slow onboarding is enormous — and nobody has solved it at the code-intelligence level yet.
+
+Existing solutions
+Sourcegraph
+GitHub Copilot (partial)
+CodeSee
+Notion wikis
+Confluence docs
+How they win and how they lose
+Where they win
+Sourcegraph excels at code search. Copilot autocompletes inline. CodeSee draws basic dependency graphs. Confluence stores whatever humans write.
+Where they lose
+None of them explain what the codebase actually does in plain English. None let you ask questions about a specific repo contextually. None surface bug hotspots or generate an onboarding path automatically.
+Our project
+CodeCompass takes a GitHub repo URL and transforms it into an interactive intelligence layer. It performs AST parsing across all source files, builds a module dependency graph, identifies the entry points and critical paths, and generates plain-English explanations at the file, module, and function level. A bug hotspot heatmap highlights files with the highest churn and complexity. A structured onboarding checklist tells a new developer exactly where to start, in what order, and why. Most powerfully — a RAG-based conversational interface lets you ask "what does the payment module do?" and get an answer grounded in the actual code of that repo, not generic knowledge.
+
+How we overcome existing solutions
+Sourcegraph helps you find code. We help you understand it. CodeSee draws a graph. We explain what every node in that graph does and how it connects to business logic. Copilot helps you write code. We help you understand the code already written. Nobody else is doing RAG over a user-provided repo with contextual Q&A — that's the technical moat.
+
+Tech stack
+Java (Spring Boot)
+Python (AST + RAG service)
+React + Tailwind
+GitHub API
+OpenAI / Gemini API
+LangChain + FAISS
+PostgreSQL
+D3.js (graph viz)
+5 differentiating features
+01
+Interactive architecture map — an explorable, zoomable graph of modules and their dependencies with click-to-explain on every node, generated entirely from actual code not manual input
+02
+Contextual repo chat — ask any question about the repo ("where does authentication start?", "which module handles payments?") and get answers grounded in the actual code via RAG
+03
+Bug hotspot heatmap — overlays complexity scores and git churn data to visually highlight the files most likely to contain issues and deserve the most onboarding attention
+04
+Auto-generated onboarding checklist — a prioritized reading guide ("start here → understand this → then explore that") generated from entry point analysis and dependency depth
+05
+Function-level plain English summaries — every public function in the repo gets a one-paragraph explanation of what it does, what it takes in, and what it returns, with no manual documentation required
+AI features
+RAG pipeline — repo files are chunked, embedded using a vector model, and stored in FAISS so the LLM can answer questions grounded in that specific codebase
+AST-based code understanding — Python's AST module parses source files to extract function signatures, class hierarchies, and import relationships at a structural level
+LLM-powered plain English summaries — GPT or Gemini generates human-readable explanations for each module and function from its parsed structure and surrounding context
+Complexity scoring — cyclomatic complexity + git churn combined into a single hotspot score per file to surface risk areas automatically without manual code review
+Wow factors
+Paste any GitHub URL and get a full intelligence report in under 60 seconds — the live demo writes itself
+The repo chat works on the interviewer's own codebase if they share it — the most personal demo possible in an interview setting
+Every interviewer has suffered onboarding pain — this is the first project that solves their personal lived experience, not an abstract problem
+The architecture graph is visually stunning — a live, explorable D3 network of real code relationships makes the demo look like polished internal tooling
+
+
+
+Practical Research
+
+India context
+GitHub is globally used — Indian developers use it identically. This project has zero India-specific limitations.
+Public GitHub API is free with a personal token — 5000 requests/hour, more than enough to analyze any repo in your demo.
+FAISS (vector search) and LangChain run entirely on your machine — no cloud costs at all for the RAG pipeline.
+This project needs an LLM API for code explanations. OpenAI costs money — but Google Gemini Flash has a generous free tier that handles this perfectly.
+Full tool breakdown
+Java Spring Boot
+Backend API
+Free forever
+Python (AST module)
+Code parsing — built into Python standard library
+Free forever
+LangChain + FAISS
+RAG pipeline and vector search
+Free forever
+Google Gemini Flash API
+LLM for code explanations and chat — 15 req/min, 1M tokens/day free
+Free tier is very generous
+GitHub REST API
+Fetch repo files and structure
+5000 req/hour free
+React + Tailwind + D3.js
+Frontend + interactive graph visualization
+Free forever
+PostgreSQL (Neon)
+Storing repo analysis results
+Free tier sufficient
+Render / Railway
+Hosting Java + Python services
+Free tier sufficient
+Vercel
+Frontend hosting
+Free forever
+Total cost
+Estimated build cost
+Gemini free tier handles everything — no OpenAI key needed
+₹0
+
+Indian market numbers
+5.4M+
+Software developers in India — second largest dev population in the world (NASSCOM)
+$245B
+Indian IT industry revenue FY2024 — all of this runs on large codebases
+40,000+
+Freshers TCS onboards every year — each one faces codebase onboarding
+3–6 months
+Average time for a new developer to become productive in an unfamiliar codebase
+10M
+Projected Indian developers by 2030 — onboarding problem only scales up
+2x salary
+Estimated cost of poor onboarding per engineer — slow ramp = money lost
+Which Indian companies face this exact problem
+TCS (onboards 40K+ freshers/yr)
+Infosys (50K+/yr)
+Wipro
+Flipkart engineering
+Razorpay
+PhonePe
+CRED
+Zepto
+Every Indian startup scaling fast
+HR questions and your exact answers
+HR asks
+Why did you build this? Who needs it?
+"India has 5.4 million software developers and that number is expected to reach 10 million by 2030. TCS alone onboards 40,000 freshers every year. Studies show it takes 3 to 6 months for a new developer to become productive in an unfamiliar codebase — and during that time they're blocked on seniors, reading outdated wikis, and guessing at how systems connect. CodeCompass cuts that ramp time by giving developers an intelligent, auto-generated map of any codebase they paste a GitHub link for."
+HR asks
+What makes this different from just reading code?
+"Reading code tells you what individual lines do. CodeCompass tells you why modules exist, how they connect, which files are the highest risk, and where to start reading first — automatically. The RAG pipeline embeds the entire repo into a vector database, so when you ask 'where does the payment flow start' it retrieves the exact relevant files and generates a contextual answer grounded in that specific codebase — not generic knowledge."
+HR asks
+Has this been built before?
+"Sourcegraph does code search. GitHub Copilot autocompletes. Neither explains what a codebase does end to end, generates an architecture diagram automatically, or lets you have a conversation about a specific repo. CodeSee draws basic dependency graphs but has no AI explanation layer. We're combining AST-based static analysis with RAG-based Q&A in a way that no student project and very few commercial tools have done."
+HR asks
+What's the technical complexity here?
+"Four layers — AST parsing using Python's built-in AST module to extract function signatures and import relationships, dependency graph generation using NetworkX, RAG pipeline using LangChain and FAISS for vector search, and LLM-powered explanation generation using the Gemini API. The Java Spring Boot backend orchestrates all services and caches analysis results in PostgreSQL so repeated queries on the same repo are instant."
+
+
+
+
+
+API Keys:
+gemini api key - YOUR_GEMINI_API_KEY_HERE
+github token - YOUR_GITHUB_PERSONAL_ACCESS_TOKEN_HERE

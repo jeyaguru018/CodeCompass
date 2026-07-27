@@ -1,0 +1,108 @@
+spring:
+  application:
+    name: CodeCompass Backend
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/codecompass}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:#Jeyaguru064}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      # Explicit pool sizing — Spring Boot default is 10 which saturates quickly under load.
+      # 20 concurrent DB connections handles ~200 concurrent requests (assuming 10ms avg query).
+      maximum-pool-size: 20
+      minimum-idle: 5
+      # How long to wait for a connection before throwing an exception (default is 30s)
+      connection-timeout: 30000
+      # How long a connection can sit idle before being evicted (default is 10 min)
+      idle-timeout: 600000
+      # Max lifetime of a connection to prevent stale connections (less than PostgreSQL's wait_timeout)
+      max-lifetime: 1800000
+      pool-name: CodeCompass-HikariPool
+
+  jpa:
+    hibernate:
+      # validate: Hibernate checks that entity fields match the DB schema but makes NO changes.
+      # Schema changes are now ONLY made through Flyway migrations in db/migration/.
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false  # Disables OSIV to prevent lazy loading leaking into the web layer
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # baseline-on-migrate was used once for the initial transition from ddl-auto.
+    # It is intentionally disabled now so that Flyway fails loudly if the migration
+    # history does not match the live schema.
+    validate-on-migrate: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  cache:
+    type: redis
+
+jwt:
+  private-key: ${JWT_PRIVATE_KEY}
+  public-key: ${JWT_PUBLIC_KEY}
+
+encryption:
+  key: ${ENCRYPTION_KEY}
+
+github:
+  client-id: ${GITHUB_CLIENT_ID}
+  client-secret: ${GITHUB_CLIENT_SECRET}
+
+app:
+  frontend-url: ${FRONTEND_ORIGIN:http://localhost:5173}
+  python-service-url: ${PYTHON_SERVICE_URL:http://localhost:8000}
+  internal-secret: ${INTERNAL_SECRET:default-secret}
+
+# ─── Spring Boot Actuator ──────────────────────────────────────────────────────
+# Actuator runs on a SEPARATE internal port (8082) so it is never reachable on
+# the public-facing port (8081). In production, firewall/security group rules
+# block external traffic to 8082 — only internal monitoring tools (Prometheus,
+# k8s liveness probes) can reach it.
+management:
+  server:
+    port: 8082
+  endpoints:
+    web:
+      exposure:
+        # Only expose health + prometheus — nothing else (no /env, /beans, /heapdump)
+        include: health,prometheus,info
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  # Add application metadata to /actuator/info
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: CodeCompass
+    version: 1.0.0
+    description: AI-powered codebase intelligence platform
+
+# ─── Logging ──────────────────────────────────────────────────────────────────
+# logback-spring.xml handles the actual appender/masking config.
+# These properties control the Spring Boot layer.
+logging:
+  config: classpath:logback-spring.xml
+  level:
+    root: INFO
+    com.codecompass: INFO
+    org.springframework.web: WARN
+    org.hibernate.SQL: WARN

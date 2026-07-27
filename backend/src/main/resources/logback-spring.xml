@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!--
+        Logback configuration for CodeCompass Backend.
+
+        Key properties:
+        1. ASYNC appenders: log writes are non-blocking — queue capacity 1024.
+        2. SECRET MASKING: nested %replace() converters strip JWTs, Authorization
+           headers, and JSON secret fields. Nested form means each pattern operates
+           on the OUTPUT of the previous one — they compose correctly.
+        3. Separate ERROR log file for alerting.
+
+        Masking chain (innermost → outermost):
+          Layer 1: raw JWT body (eyJ...) → [REDACTED_JWT]
+          Layer 2: "Bearer eyJ..." → "Bearer [REDACTED_JWT]" (already handled by L1, belt+suspenders)
+          Layer 3: JSON secret fields  → "password":"[REDACTED]"
+    -->
+
+    <property name="LOG_DIR" value="logs"/>
+    <property name="APP_NAME" value="CodeCompass"/>
+
+    <!-- Reusable masked-message pattern as a property for DRY use across appenders -->
+    <!--
+        MASKING LOGIC EXPLANATION:
+        %replace(X){regex, replacement} replaces all matches of 'regex' in X with 'replacement'.
+        To chain masks, NEST them: %replace(%replace(X){r1,t1}){r2,t2}
+        This ensures the message is processed by r1 first, then r2 acts on the result.
+
+        Layer 1 (innermost): Mask raw JWT tokens — any "eyJ..." three-part dot-separated string.
+            Catches: access tokens in exception stack traces, logged entity objects, debug prints.
+        Layer 2 (middle): Mask Bearer header values that may be non-JWT (e.g. opaque tokens).
+            Catches: "Authorization: Bearer abc123..." that doesn't match the JWT dot pattern.
+        Layer 3 (outermost): Mask JSON-style secret fields.
+            Catches: {"password":"hunter2"}, {"client_secret":"abc"}, {"token":"xyz"} in logged payloads.
+
+        Why nested and not sequential %replace(%msg) calls?
+        Sequential calls like "%replace(%msg){r1,t1}%replace(%msg){r2,t2}" would
+        process %msg TWICE independently and then CONCATENATE the two results —
+        not what we want. Nesting ensures a single pass through the message.
+    -->
+
+    <!-- ─── Console Appender ─────────────────────────────────────────────── -->
+    <appender name="CONSOLE_RAW" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5level [${APP_NAME}] [%thread] %logger{36} : %replace(%replace(%replace(%msg){'(eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)','[REDACTED_JWT]'}){'(Bearer\s+)[A-Za-z0-9_-]{20,}','$1[REDACTED]'}){'("(?:password|secret|token|apiKey|api_key|access_token|client_secret|encryption_key|github_access_token)"\s*:\s*")([^"]{1,})(")','$1[REDACTED]$3'}%n</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <appender name="CONSOLE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="CONSOLE_RAW"/>
+    </appender>
+
+    <!-- ─── Rolling File Appender (all INFO+) ────────────────────────────── -->
+    <appender name="FILE_RAW" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/application.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/application.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy
+                    class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>100MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <!-- Same nested masking pattern as console -->
+            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5level [%thread] %logger{36} : %replace(%replace(%replace(%msg){'(eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)','[REDACTED_JWT]'}){'(Bearer\s+)[A-Za-z0-9_-]{20,}','$1[REDACTED]'}){'("(?:password|secret|token|apiKey|api_key|access_token|client_secret|encryption_key|github_access_token)"\s*:\s*")([^"]{1,})(")','$1[REDACTED]$3'}%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="FILE_RAW"/>
+    </appender>
+
+    <!-- ─── ERROR-only File Appender ─────────────────────────────────────── -->
+    <appender name="ERROR_FILE_RAW" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/error.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/error.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} ERROR [%thread] %logger{36} : %replace(%replace(%replace(%msg){'(eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)','[REDACTED_JWT]'}){'(Bearer\s+)[A-Za-z0-9_-]{20,}','$1[REDACTED]'}){'("(?:password|secret|token|apiKey|api_key|access_token|client_secret|encryption_key|github_access_token)"\s*:\s*")([^"]{1,})(")','$1[REDACTED]$3'}%n%ex{full}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="ERROR_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>256</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <appender-ref ref="ERROR_FILE_RAW"/>
+    </appender>
+
+    <!-- ─── Logger configuration ──────────────────────────────────────────── -->
+    <logger name="org.hibernate.SQL" level="WARN"/>
+    <logger name="org.hibernate.type" level="WARN"/>
+    <logger name="org.springframework.web.servlet.mvc.method.annotation" level="WARN"/>
+    <logger name="com.zaxxer.hikari" level="INFO"/>
+    <logger name="com.codecompass" level="${LOG_LEVEL_APP:-INFO}"/>
+
+    <!-- ─── Root logger ────────────────────────────────────────────────────── -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="ERROR_FILE"/>
+    </root>
+
+</configuration>
