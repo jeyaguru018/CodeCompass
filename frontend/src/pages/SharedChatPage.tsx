@@ -1,35 +1,68 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { API_BASE } from '../config';
 
 interface ChatMessage {
+  id: string;
   role: 'user' | 'assistant';
   content: string;
-  id: string;
+  created_at?: string;
 }
 
+interface SharedSession {
+  id: string;
+  title: string | null;
+  repository_name: string;
+  messages: ChatMessage[];
+}
+
+/**
+ * SharedChatPage
+ *
+ * A public, read-only view of a shared chat session. No auth required.
+ *
+ * Backend contract:
+ *   GET /api/v1/chat/shared/{token}   (NO Authorization header)
+ *   Response: {
+ *     id: string,
+ *     title: string | null,
+ *     repository_name: string,          // "owner/name"
+ *     messages: [{ id, role, content, created_at, cited_file_ids }]
+ *   }
+ *   404 → session not found or not public
+ */
 export default function SharedChatPage() {
   const { token } = useParams<{ token: string }>();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [session,  setSession]  = useState<SharedSession | null>(null);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState('');
 
   useEffect(() => {
-    const fetchSharedChat = async () => {
-      try {
-        // We hit the public endpoint with no Authorization header
-        const res = await fetch(`http://localhost:8081/api/v1/repos/share/${token}`);
+    if (!token) {
+      setError('No sharing token provided in the URL.');
+      setLoading(false);
+      return;
+    }
+
+    // This endpoint is public — no Authorization header is sent.
+    // Using the centralized API_BASE so switching environments
+    // (dev → staging → prod) requires one config change.
+    fetch(`${API_BASE}/api/v1/chat/shared/${token}`)
+      .then(async res => {
         if (!res.ok) {
-          throw new Error('Chat session not found or expired.');
+          // Surface backend message when possible; fall back to a generic string.
+          const text = await res.text().catch(() => '');
+          throw new Error(
+            res.status === 404
+              ? 'This shared chat session does not exist or has been unshared.'
+              : text || `Server error (${res.status})`
+          );
         }
-        const data = await res.json();
-        setMessages(data.messages || []);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load chat.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSharedChat();
+        return res.json() as Promise<SharedSession>;
+      })
+      .then(data => setSession(data))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load chat.'))
+      .finally(() => setLoading(false));
   }, [token]);
 
   return (
@@ -41,9 +74,12 @@ export default function SharedChatPage() {
           </div>
           <span className="font-bold text-[24px] text-on-surface">CodeCompass</span>
         </div>
+        {session?.repository_name && (
+          <p className="text-on-surface-variant font-mono text-[13px]">{session.repository_name}</p>
+        )}
         <p className="text-on-surface-variant font-mono text-[13px] bg-[#14141C] border border-[#24242F] px-4 py-1.5 rounded-full flex items-center gap-2">
           <span className="material-symbols-outlined text-primary" style={{ fontSize: '16px' }}>public</span>
-          Shared Chat Session
+          {session?.title ?? 'Shared Chat Session'}
         </p>
       </header>
 
@@ -59,9 +95,14 @@ export default function SharedChatPage() {
               <span className="material-symbols-outlined text-rose-500" style={{ fontSize: '48px' }}>error</span>
               <p className="font-mono text-[14px] text-rose-400">{error}</p>
             </div>
+          ) : session?.messages.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-on-surface-variant p-6 text-center">
+              <span className="material-symbols-outlined text-outline" style={{ fontSize: '48px' }}>chat_bubble</span>
+              <p className="font-mono text-[14px]">This shared session has no messages.</p>
+            </div>
           ) : (
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {messages.map((msg) => (
+              {session?.messages.map(msg => (
                 <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[85%] rounded-2xl p-4 ${
                     msg.role === 'user'
@@ -82,8 +123,8 @@ export default function SharedChatPage() {
               ))}
             </div>
           )}
-          
-          {/* Read Only Footer */}
+
+          {/* Read-only footer */}
           <div className="bg-[#1B1B26] border-t border-[#24242F] p-4 text-center">
             <p className="font-mono text-[12px] text-on-surface-variant flex items-center justify-center gap-2">
               <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>lock</span>

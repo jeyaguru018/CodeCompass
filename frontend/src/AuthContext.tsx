@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-
-const API = 'http://localhost:8081';
+import { API_BASE } from './config';
 
 interface AuthContextValue {
   /** The JWT access token — lives in memory only, never persisted to localStorage. */
@@ -38,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isRefreshing.current = true;
     refreshPromise.current = (async () => {
       try {
-        const res = await fetch(`${API}/api/v1/auth/refresh`, {
+        const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
           method: 'POST',
           credentials: 'include', // send the HttpOnly cc_refresh cookie
         });
@@ -82,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [accessToken, silentRefresh]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await fetch(`${API}/api/v1/auth/login`, {
+    const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include', // so the Set-Cookie response header is accepted
@@ -97,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const register = useCallback(async (fullName: string, email: string, password: string) => {
-    const res = await fetch(`${API}/api/v1/auth/register`, {
+    const res = await fetch(`${API_BASE}/api/v1/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -113,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await fetch(`${API}/api/v1/auth/logout`, {
+      await fetch(`${API_BASE}/api/v1/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       });

@@ -11,8 +11,10 @@
 import { useAuth } from './AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useCallback } from 'react';
+import { API_BASE } from './config';
 
-export const API_BASE = 'http://localhost:8081';
+// Re-export so any existing import of API_BASE from apiClient still resolves.
+export { API_BASE };
 
 /** React hook returning a pre-configured fetch function bound to the current auth session. */
 export function useApiClient() {

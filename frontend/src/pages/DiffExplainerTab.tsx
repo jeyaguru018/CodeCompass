@@ -1,12 +1,25 @@
 import { useState } from 'react';
-import { useAuth } from '../AuthContext';
+import { useApiClient } from '../apiClient';
 
+/**
+ * DiffExplainerTab
+ *
+ * Calls POST /api/v1/diff/explain via the shared apiFetch hook so the request
+ * is automatically authenticated and the 401-refresh logic applies.
+ *
+ * Backend contract:
+ *   Request  – POST /api/v1/diff/explain
+ *              Body: { repoId: string, diffText: string }
+ *              (diffText may be a raw unified diff or a 7-40 char commit SHA)
+ *   Response – { explanation: string }
+ *              On error: HTTP 4xx/5xx with a plain-text or JSON error body.
+ */
 export default function DiffExplainerTab({ repoId }: { repoId: string }) {
-  const [diffText, setDiffText] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [diffText,    setDiffText]    = useState('');
+  const [loading,     setLoading]     = useState(false);
   const [explanation, setExplanation] = useState('');
-  const [error, setError] = useState('');
-  const { getToken } = useAuth();
+  const [error,       setError]       = useState('');
+  const apiFetch = useApiClient();
 
   const handleExplain = async () => {
     if (!diffText.trim()) return;
@@ -15,24 +28,24 @@ export default function DiffExplainerTab({ repoId }: { repoId: string }) {
     setExplanation('');
 
     try {
-      const token = await getToken();
-      const res = await fetch(`http://localhost:8081/api/v1/diff/explain`, {
+      const res = await apiFetch('/api/v1/diff/explain', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
         body: JSON.stringify({ repoId, diffText }),
       });
-      
+
       if (!res.ok) {
-        throw new Error('Failed to analyze diff');
+        // Surface the backend's own error message when available.
+        const errText = await res.text().catch(() => '');
+        throw new Error(errText || `Server returned ${res.status}`);
       }
-      
+
       const data = await res.json();
-      setExplanation(data.explanation || 'No explanation returned.');
-    } catch (err: any) {
-      setError(err.message || 'An error occurred.');
+      // Backend returns { explanation: string }.
+      const text = data.explanation ?? data.content ?? '';
+      if (!text) throw new Error('The AI service returned an empty explanation. Please try again.');
+      setExplanation(text);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
@@ -42,15 +55,18 @@ export default function DiffExplainerTab({ repoId }: { repoId: string }) {
     <div className="p-gutter md:p-unit-6 h-full flex flex-col">
       <div className="mb-unit-6">
         <h2 className="text-[32px] font-semibold text-on-surface mb-2">Diff Explainer</h2>
-        <p className="text-on-surface-variant font-mono text-[13px]">Paste a git diff or pull request changes to get an AI risk assessment.</p>
+        <p className="text-on-surface-variant font-mono text-[13px]">
+          Paste a git diff or a commit SHA to get an AI risk assessment.
+        </p>
       </div>
 
       <div className="flex-1 flex flex-col lg:flex-row gap-unit-6 min-h-0">
-        {/* Input Area */}
+
+        {/* ── Input ── */}
         <div className="flex-1 flex flex-col bg-[#14141C] border border-[#24242F] rounded-xl overflow-hidden">
           <div className="bg-[#1B1B26] border-b border-[#24242F] p-3 flex items-center justify-between">
             <span className="font-mono text-[13px] text-on-surface-variant uppercase tracking-wider font-semibold">Diff Input</span>
-            <button 
+            <button
               onClick={handleExplain}
               disabled={loading || !diffText.trim()}
               className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white px-4 py-1.5 rounded-md font-mono text-[13px] transition-colors disabled:opacity-50 flex items-center gap-2 shadow-[0_0_10px_rgba(139,92,246,0.2)]"
@@ -70,14 +86,14 @@ export default function DiffExplainerTab({ repoId }: { repoId: string }) {
           </div>
           <textarea
             value={diffText}
-            onChange={(e) => setDiffText(e.target.value)}
-            placeholder="Paste your raw diff here..."
+            onChange={e => setDiffText(e.target.value)}
+            placeholder={'Paste your raw diff here...\n\nor enter a commit SHA (e.g. a1b2c3d)'}
             className="flex-1 w-full bg-transparent p-4 font-mono text-[13px] text-[#A1A1AA] outline-none resize-none"
             spellCheck={false}
           />
         </div>
 
-        {/* Output Area */}
+        {/* ── Output ── */}
         <div className="flex-1 flex flex-col bg-[#14141C] border border-[#24242F] rounded-xl overflow-hidden">
           <div className="bg-[#1B1B26] border-b border-[#24242F] p-3 flex items-center gap-2">
             <span className="material-symbols-outlined text-[#22D3EE]" style={{ fontSize: '18px' }}>auto_awesome</span>
@@ -90,24 +106,26 @@ export default function DiffExplainerTab({ repoId }: { repoId: string }) {
                 <p className="font-mono text-[14px]">Analyzing code changes and detecting risks...</p>
               </div>
             )}
-            
+
             {error && (
               <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 p-4 rounded-lg flex items-center gap-3">
                 <span className="material-symbols-outlined">error</span>
                 <p className="font-mono text-[13px]">{error}</p>
               </div>
             )}
-            
+
             {!loading && !error && explanation && (
               <div className="prose prose-invert prose-sm max-w-none font-mono">
                 {explanation.split('\n').map((line, i) => (
                   <p key={i} className="mb-2 leading-relaxed text-on-surface-variant">
-                    {line.startsWith('#') ? <strong className="text-on-surface text-[15px] block mt-4 mb-2">{line.replace(/#/g, '')}</strong> : line}
+                    {line.startsWith('#')
+                      ? <strong className="text-on-surface text-[15px] block mt-4 mb-2">{line.replace(/#/g, '')}</strong>
+                      : line}
                   </p>
                 ))}
               </div>
             )}
-            
+
             {!loading && !error && !explanation && (
               <div className="flex items-center justify-center h-full text-on-surface-variant/50">
                 <p className="font-mono text-[13px]">Explanation will appear here.</p>
@@ -115,6 +133,7 @@ export default function DiffExplainerTab({ repoId }: { repoId: string }) {
             )}
           </div>
         </div>
+
       </div>
     </div>
   );

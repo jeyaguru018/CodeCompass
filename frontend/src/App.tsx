@@ -54,7 +54,10 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/chat/:token" element={<SharedChatPage />} />
+        {/* /chat/shared/:token — public shared chat view (no auth) */}
+        <Route path="/chat/shared/:token" element={<SharedChatPage />} />
+        {/* Legacy redirect: old links that used /chat/:token still work */}
+        <Route path="/chat/:token" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

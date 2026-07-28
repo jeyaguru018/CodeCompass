@@ -175,8 +175,9 @@ export default function DashboardPage() {
     try {
       const res = await apiFetch('/api/v1/repos');
       if (res.ok) setRepos(await res.json());
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
+    } catch (err) {
+      console.error('[Dashboard] fetchRepos failed:', err);
+    } finally { setLoading(false); }
   };
 
   useEffect(() => {
@@ -206,10 +207,12 @@ export default function DashboardPage() {
         setRepos((prev) => [repo, ...prev]);
         setNewRepoUrl('');
       } else {
-        alert('Failed to start analysis. Check the backend is running.');
+        const txt = await res.text().catch(() => '');
+        alert(`Analysis failed (HTTP ${res.status}): ${txt || 'Check the backend is running.'}`);
       }
-    } catch {
-      alert('Network error — is the backend running on port 8081?');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Network error';
+      alert(`Could not reach backend: ${msg}`);
     } finally {
       setAnalyzing(false);
     }
@@ -224,7 +227,9 @@ export default function DashboardPage() {
         body: JSON.stringify({ githubUrl: repo.githubUrl }),
       });
       fetchRepos();
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error('[Dashboard] handleRetry failed:', err);
+    }
   };
 
   const handleSignOut = async () => {

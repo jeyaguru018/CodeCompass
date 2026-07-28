@@ -1,38 +1,54 @@
 import { useState } from 'react';
-import { useAuth } from '../AuthContext';
+import { useApiClient } from '../apiClient';
 
-export default function ADRModal({ 
-  repoId, 
-  moduleName, 
-  onClose 
-}: { 
-  repoId: string, 
-  moduleName: string, 
-  onClose: () => void 
+/**
+ * ADRModal
+ *
+ * Calls POST /api/v1/repos/{repoId}/adr via the shared apiFetch hook so the
+ * request is automatically authenticated and the silent 401-refresh logic applies.
+ *
+ * Backend contract:
+ *   Request  – POST /api/v1/repos/{repoId}/adr   (body: JSON empty, repoId in path)
+ *   Response – { adrContent: string }
+ */
+export default function ADRModal({
+  repoId,
+  moduleName,
+  onClose,
+}: {
+  repoId: string;
+  moduleName: string;
+  onClose: () => void;
 }) {
   const [adr, setAdr] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { getToken } = useAuth();
+  const apiFetch = useApiClient();
 
   const handleGenerate = async () => {
     setLoading(true);
     setError('');
+    setAdr('');
     try {
-      const token = await getToken();
-      const res = await fetch(`http://localhost:8081/api/v1/repos/${repoId}/adr`, {
+      const res = await apiFetch(`/api/v1/repos/${repoId}/adr`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify({ targetModule: moduleName }),
+        // Backend reads repo_id from the path; body is intentionally empty.
+        body: JSON.stringify({}),
       });
-      if (!res.ok) throw new Error('Failed to generate ADR');
+
+      if (!res.ok) {
+        // Try to surface the backend's error message when available.
+        const errText = await res.text().catch(() => '');
+        throw new Error(errText || `Server error: ${res.status}`);
+      }
+
       const data = await res.json();
-      setAdr(data.adrContent);
-    } catch (err: any) {
-      setError(err.message || 'Error generating ADR.');
+      // Backend returns { adrContent: string }
+      const content = data.adrContent ?? data.content ?? '';
+      if (!content) throw new Error('The AI service returned an empty ADR. Please try again.');
+      setAdr(content);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
@@ -41,7 +57,7 @@ export default function ADRModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
       <div className="bg-[#14141C] border border-[#24242F] w-full max-w-3xl max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        
+
         {/* Header */}
         <div className="bg-[#1B1B26] border-b border-[#24242F] p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -67,7 +83,7 @@ export default function ADRModal({
               <p className="text-on-surface-variant text-[14px] max-w-sm mb-6">
                 CodeCompass will use AI to analyze {moduleName} and generate a structured Architecture Decision Record explaining its purpose, dependencies, and design patterns.
               </p>
-              <button 
+              <button
                 onClick={handleGenerate}
                 className="bg-[#8B5CF6] text-white px-6 py-2.5 rounded-lg font-mono text-[14px] font-semibold hover:opacity-90 shadow-[0_0_15px_rgba(139,92,246,0.4)] transition-all flex items-center gap-2"
               >
@@ -92,12 +108,25 @@ export default function ADRModal({
           )}
 
           {adr && (
-            <div className="prose prose-invert prose-sm max-w-none font-mono text-[13px]">
-              {adr.split('\n').map((line, i) => (
-                <p key={i} className="mb-2 text-on-surface-variant">
-                  {line.startsWith('#') ? <strong className="text-on-surface text-[15px] block mt-4 mb-2">{line.replace(/#/g, '')}</strong> : line}
-                </p>
-              ))}
+            <div>
+              {/* Retry button when ADR is already generated */}
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={handleGenerate}
+                  disabled={loading}
+                  className="text-on-surface-variant hover:text-primary font-mono text-[12px] flex items-center gap-1 transition-colors"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>refresh</span>
+                  Regenerate
+                </button>
+              </div>
+              <div className="prose prose-invert prose-sm max-w-none font-mono text-[13px]">
+                {adr.split('\n').map((line, i) => (
+                  <p key={i} className="mb-2 text-on-surface-variant">
+                    {line.startsWith('#') ? <strong className="text-on-surface text-[15px] block mt-4 mb-2">{line.replace(/#/g, '')}</strong> : line}
+                  </p>
+                ))}
+              </div>
             </div>
           )}
         </div>

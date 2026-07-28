@@ -184,7 +184,13 @@ export default function AuthPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
+                minLength={8}
               />
+              {!isLogin && (
+                <p className="font-mono text-[11px] text-on-surface-variant mt-1">
+                  Minimum 8 characters required.
+                </p>
+              )}
             </div>
             <button
               type="submit"

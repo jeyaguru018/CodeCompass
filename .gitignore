@@ -36,6 +36,7 @@ Thumbs.db
 .factorypath
 .apt_generated/
 .sts4-cache/
+.freebuff/
 
 # Node/Frontend Build/Deps
 node_modules/
@@ -71,3 +72,8 @@ coverage.xml
 *,cover
 .hypothesis/
 .pytest_cache/
+
+# Project generation/unnecessary docs
+/*.txt
+/*.docx
+!python-service/requirements.txt
